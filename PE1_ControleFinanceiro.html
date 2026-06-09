@@ -11,15 +11,14 @@
     ------------------------------------------------------------
     - Cadastrar receitas e despesas com descrição, valor e data;
     - Categorizar transações (alimentação, transporte, lazer…);
-    - Exibir lista completa de transações registradas;
-    - Calcular e exibir saldo atual (receitas - despesas);
+    - Exibir dinamicamente a lista de transações registradas;
+    - Calcular e atualizar o saldo atual (receitas - despesas);
     - Validar campos obrigatórios antes de salvar;
-    - Excluir transações individualmente;
-    - Editar transações já cadastradas;
-    - Filtrar por tipo (receita/despesa) e por período;
-    - Persistir dados no localStorage para não perder ao recarregar;
-    - Exportar relatório em CSV ou PDF;
-    - Exibir gráfico de barras com gastos por categoria.
+    - Excluir transações individualmente da lista;
+    - Editar um lançamento já cadastrado;
+    - Filtrar por tipo (entrada/saída) e por período;
+    - Persistir dados no localStorage para manter entre sessões;
+    - Exportar relatório em CSV ou PDF.
     ============================================================
   -->
 
@@ -28,49 +27,46 @@
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Special+Elite&display=swap" rel="stylesheet" />
 
   <style>
-    /* ── Reset ─────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    /* ── Paleta analógica ───────────────────────────────────── */
     :root {
-      --paper:        #f5f0e8;
-      --paper-dark:   #ede7d9;
-      --paper-line:   #d9d0be;
-      --ink:          #2b2118;
-      --ink-light:    #6b5a47;
-      --ink-faint:    #a89880;
-      --red-stamp:    #8b2020;
-      --green-stamp:  #1e5c2e;
-      --blue-margin:  #4a6fa5;
-      --tape:         rgba(200, 180, 130, 0.45);
-      --hole-color:   #c8bfb0;
+      --papel:         #f5f0e8;
+      --papel-escuro:  #ede7d9;
+      --linha:         #d9d0be;
+      --tinta:         #2b2118;
+      --tinta-leve:    #6b5a47;
+      --tinta-fraca:   #a89880;
+      --verde:         #1e5c2e;
+      --vermelho:      #8b2020;
+      --azul-margem:   #4a6fa5;
+      --borda-caderno: #d4c9b8;
     }
 
     body {
       background-color: #c9bfb0;
-      background-image:
-        repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 31px,
-          #b8ae9f 31px,
-          #b8ae9f 32px
-        );
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 31px,
+        #b8ae9f 31px,
+        #b8ae9f 32px
+      );
       min-height: 100vh;
       padding: 2.5rem 1rem 5rem;
       font-family: 'Caveat', cursive;
     }
 
-    /* ── Caderno ────────────────────────────────────────────── */
+    /* ── Caderno ─────────────────────────────────────────────*/
     .caderno {
       max-width: 660px;
       margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
     }
 
-    /* ── Capa ───────────────────────────────────────────────── */
+    /* ── Capa ────────────────────────────────────────────────*/
     .capa {
       background: #3d2b1f;
       border-radius: 4px 4px 0 0;
@@ -97,12 +93,12 @@
       margin-top: 4px;
     }
 
-    .capa__espiral {
+    .espirais {
       display: flex;
       gap: 10px;
     }
 
-    .espiral-circulo {
+    .espiral {
       width: 18px;
       height: 18px;
       border-radius: 50%;
@@ -110,16 +106,14 @@
       background: #2a1c12;
     }
 
-    /* ── Folha principal ────────────────────────────────────── */
+    /* ── Folha ───────────────────────────────────────────────*/
     .folha {
-      background: var(--paper);
-      border-left: 4px solid #d4c9b8;
-      border-right: 4px solid #d4c9b8;
-      padding: 0;
+      background: var(--papel);
+      border-left: 4px solid var(--borda-caderno);
+      border-right: 4px solid var(--borda-caderno);
       position: relative;
     }
 
-    /* Linha margem esquerda */
     .folha::before {
       content: '';
       position: absolute;
@@ -127,12 +121,11 @@
       top: 0;
       bottom: 0;
       width: 1px;
-      background: var(--blue-margin);
+      background: var(--azul-margem);
       opacity: 0.35;
       pointer-events: none;
     }
 
-    /* Furos de argola */
     .furos {
       display: flex;
       flex-direction: column;
@@ -146,48 +139,48 @@
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: var(--hole-color);
+      background: var(--borda-caderno);
       border: 1px solid #b8afa0;
     }
 
-    /* ── Seção interna ──────────────────────────────────────── */
+    /* ── Seções internas ─────────────────────────────────────*/
     .secao {
       padding: 1.5rem 1.75rem 1.5rem 4rem;
-      border-bottom: 1px dashed var(--paper-line);
+      border-bottom: 1px dashed var(--linha);
     }
 
-    .secao:last-child { border-bottom: none; }
+    .secao:last-child {
+      border-bottom: none;
+    }
 
-    /* ── Cabeçalho da página ────────────────────────────────── */
-    .pagina-header {
+    .secao__cabecalho {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       margin-bottom: 1.25rem;
     }
 
-    .pagina-titulo {
+    .secao__titulo {
       font-family: 'Special Elite', monospace;
-      font-size: 1.1rem;
-      color: var(--ink);
+      font-size: 1.05rem;
+      color: var(--tinta);
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      border-bottom: 2px solid var(--ink);
+      border-bottom: 2px solid var(--tinta);
       padding-bottom: 2px;
     }
 
-    .pagina-data {
+    .secao__subtitulo {
       font-size: 0.85rem;
-      color: var(--ink-light);
+      color: var(--tinta-leve);
       font-style: italic;
     }
 
-    /* ── Resumo (carimbo) ───────────────────────────────────── */
+    /* ── Carimbos de resumo ──────────────────────────────────*/
     .resumo {
       display: flex;
       gap: 1rem;
       flex-wrap: wrap;
-      margin-bottom: 0.5rem;
     }
 
     .carimbo {
@@ -195,17 +188,17 @@
       border-radius: 3px;
       padding: 0.5rem 0.875rem;
       text-align: center;
-      min-width: 120px;
       flex: 1;
-      transform: rotate(-0.5deg);
+      min-width: 110px;
     }
 
-    .carimbo:nth-child(2) { transform: rotate(0.4deg); }
+    .carimbo:nth-child(1) { transform: rotate(-0.5deg); }
+    .carimbo:nth-child(2) { transform: rotate(0.4deg);  }
     .carimbo:nth-child(3) { transform: rotate(-0.3deg); }
 
-    .carimbo--verde { color: var(--green-stamp); }
-    .carimbo--vermelho { color: var(--red-stamp); }
-    .carimbo--azul { color: var(--blue-margin); }
+    .carimbo--verde    { color: var(--verde); }
+    .carimbo--vermelho { color: var(--vermelho); }
+    .carimbo--azul     { color: var(--azul-margem); }
 
     .carimbo__label {
       font-family: 'Special Elite', monospace;
@@ -225,39 +218,30 @@
       line-height: 1;
     }
 
-    /* ── Formulário ─────────────────────────────────────────── */
-    .form-titulo {
-      font-size: 1rem;
-      color: var(--ink);
-      font-weight: 600;
+    /* ── Formulário ──────────────────────────────────────────*/
+    .form-nota {
+      font-size: 0.8rem;
+      color: var(--tinta-fraca);
+      font-style: italic;
       margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .form-titulo::before {
-      content: '✎';
-      font-size: 1.1rem;
-      color: var(--ink-light);
     }
 
     .campo-linha {
       display: flex;
       align-items: baseline;
       gap: 0.75rem;
-      margin-bottom: 0.875rem;
-      border-bottom: 1.5px solid var(--paper-line);
+      border-bottom: 1.5px solid var(--linha);
       padding-bottom: 4px;
+      margin-bottom: 0.875rem;
     }
 
     .campo-linha label {
-      font-size: 0.8rem;
-      color: var(--ink-light);
       font-family: 'Special Elite', monospace;
+      font-size: 0.78rem;
       letter-spacing: 0.05em;
+      color: var(--tinta-leve);
       white-space: nowrap;
-      min-width: 80px;
+      min-width: 78px;
     }
 
     .campo-linha input,
@@ -268,10 +252,15 @@
       outline: none;
       font-family: 'Caveat', cursive;
       font-size: 1rem;
-      color: var(--ink);
+      color: var(--tinta);
       width: 100%;
       padding: 2px 4px;
-      caret-color: var(--ink);
+    }
+
+    .campo-linha input::placeholder,
+    .campo-linha textarea::placeholder {
+      color: var(--tinta-fraca);
+      font-style: italic;
     }
 
     .campo-linha select {
@@ -282,187 +271,170 @@
 
     .campo-linha textarea {
       resize: none;
-      height: 42px;
+      height: 40px;
       line-height: 1.5;
     }
 
-    .campo-linha input::placeholder,
-    .campo-linha textarea::placeholder {
-      color: var(--ink-faint);
-      font-style: italic;
-    }
-
-    /* Linha dupla para campos de duas colunas */
     .campos-duplos {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0 1.5rem;
     }
 
-    /* Radio tipo (receita/despesa) com cara de carimbinho */
+    /* Tipo entrada/saída */
     .tipo-grupo {
       display: flex;
-      gap: 1rem;
+      gap: 0.875rem;
       align-items: center;
-      flex-wrap: wrap;
     }
 
-    .tipo-grupo input[type="radio"] { display: none; }
+    .tipo-grupo input[type="radio"] {
+      display: none;
+    }
 
     .tipo-grupo label {
       font-family: 'Special Elite', monospace;
       font-size: 0.8rem;
       letter-spacing: 0.08em;
       padding: 4px 12px;
-      border: 2px solid var(--paper-line);
+      border: 2px solid var(--linha);
       border-radius: 2px;
       cursor: pointer;
-      color: var(--ink-faint);
-      transition: all 0.15s ease;
+      color: var(--tinta-fraca);
       min-width: auto;
       white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
 
     .tipo-grupo input[value="receita"]:checked + label {
-      border-color: var(--green-stamp);
-      color: var(--green-stamp);
+      border-color: var(--verde);
+      color: var(--verde);
       background: rgba(30, 92, 46, 0.06);
     }
 
     .tipo-grupo input[value="despesa"]:checked + label {
-      border-color: var(--red-stamp);
-      color: var(--red-stamp);
+      border-color: var(--vermelho);
+      color: var(--vermelho);
       background: rgba(139, 32, 32, 0.06);
     }
 
-    /* ── Botão ──────────────────────────────────────────────── */
+    /* ── Botões ──────────────────────────────────────────────*/
     .btn-registrar {
       display: block;
       width: 100%;
       margin-top: 1.25rem;
       padding: 0.65rem;
       background: transparent;
-      border: 2px solid var(--ink);
+      border: 2px solid var(--tinta);
       border-radius: 2px;
       font-family: 'Special Elite', monospace;
       font-size: 0.9rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--ink);
+      color: var(--tinta);
       cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition: background 0.15s, color 0.15s;
     }
 
     .btn-registrar:hover {
-      background: var(--ink);
-      color: var(--paper);
+      background: var(--tinta);
+      color: var(--papel);
     }
 
-    .btn-registrar:active { opacity: 0.8; }
+    .btn-registrar:active {
+      opacity: 0.8;
+    }
 
-    /* ── Tabela de registros ────────────────────────────────── */
-    .tabela-header {
+    /* ── Tabela de histórico ─────────────────────────────────*/
+    .tabela-cabecalho {
       display: grid;
-      grid-template-columns: 80px 1fr 80px 90px 36px;
+      grid-template-columns: 72px 1fr 90px 95px 28px;
       gap: 0 0.5rem;
       padding: 0.25rem 0 0.5rem;
-      border-bottom: 2px solid var(--ink);
+      border-bottom: 2px solid var(--tinta);
       margin-bottom: 0.25rem;
     }
 
-    .tabela-header span {
+    .tabela-cabecalho span {
       font-family: 'Special Elite', monospace;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--ink-light);
+      color: var(--tinta-leve);
     }
 
-    .tabela-header span:last-child { text-align: center; }
-    .tabela-header span:nth-child(3),
-    .tabela-header span:nth-child(4) { text-align: right; }
+    .tabela-cabecalho span:nth-child(3),
+    .tabela-cabecalho span:nth-child(4) {
+      text-align: right;
+    }
 
-    /* Linha de registro */
     .registro {
       display: grid;
-      grid-template-columns: 80px 1fr 80px 90px 36px;
+      grid-template-columns: 72px 1fr 90px 95px 28px;
       gap: 0 0.5rem;
       align-items: center;
-      padding: 0.4rem 0;
-      border-bottom: 1px solid var(--paper-line);
-      animation: aparece 0.2s ease;
-    }
-
-    @keyframes aparece {
-      from { opacity: 0; transform: translateX(-4px); }
-      to   { opacity: 1; transform: translateX(0); }
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--linha);
     }
 
     .registro__data {
-      font-size: 0.8rem;
-      color: var(--ink-light);
+      font-size: 0.82rem;
+      color: var(--tinta-leve);
       font-style: italic;
     }
 
     .registro__desc {
       font-size: 0.95rem;
-      color: var(--ink);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      color: var(--tinta);
     }
 
     .registro__cat {
-      font-size: 0.75rem;
-      color: var(--ink-faint);
+      font-size: 0.78rem;
+      color: var(--tinta-fraca);
       text-align: right;
       font-style: italic;
     }
 
     .registro__valor {
       font-family: 'Special Elite', monospace;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 700;
       text-align: right;
     }
 
-    .valor--entrada { color: var(--green-stamp); }
-    .valor--saida   { color: var(--red-stamp); }
+    .registro__valor--entrada { color: var(--verde); }
+    .registro__valor--saida   { color: var(--vermelho); }
 
     .btn-excluir {
       background: none;
       border: none;
       cursor: pointer;
-      color: var(--ink-faint);
-      font-size: 0.9rem;
       font-family: 'Special Elite', monospace;
-      padding: 2px 6px;
+      font-size: 0.85rem;
+      color: var(--tinta-fraca);
+      padding: 2px 4px;
       border-radius: 2px;
       transition: color 0.15s, background 0.15s;
-      text-align: center;
     }
 
     .btn-excluir:hover {
-      color: var(--red-stamp);
+      color: var(--vermelho);
       background: rgba(139, 32, 32, 0.08);
     }
 
-    /* Estado vazio */
-    .vazio {
+    .historico-vazio {
       padding: 2rem 0;
       text-align: center;
-      color: var(--ink-faint);
+      color: var(--tinta-fraca);
       font-style: italic;
       font-size: 0.95rem;
-      border-bottom: 1px solid var(--paper-line);
     }
 
-    /* ── Rodapé da folha ────────────────────────────────────── */
-    .rodape-folha {
-      background: var(--paper-dark);
-      border-left: 4px solid #d4c9b8;
-      border-right: 4px solid #d4c9b8;
-      border-bottom: 4px solid #d4c9b8;
+    /* ── Rodapé ──────────────────────────────────────────────*/
+    .rodape {
+      background: var(--papel-escuro);
+      border: 4px solid var(--borda-caderno);
+      border-top: none;
       border-radius: 0 0 4px 4px;
       padding: 0.5rem 1.75rem 0.75rem 4rem;
       display: flex;
@@ -470,27 +442,21 @@
       align-items: center;
     }
 
-    .rodape-folha__pag {
+    .rodape span {
       font-family: 'Special Elite', monospace;
       font-size: 0.7rem;
-      color: var(--ink-faint);
-      letter-spacing: 0.08em;
+      color: var(--tinta-fraca);
+      letter-spacing: 0.06em;
     }
 
-    .rodape-folha__contagem {
-      font-size: 0.8rem;
-      color: var(--ink-faint);
-      font-style: italic;
-    }
-
-    /* ── Responsividade ─────────────────────────────────────── */
+    /* ── Responsividade ──────────────────────────────────────*/
     @media (max-width: 520px) {
       .resumo { flex-direction: column; }
-      .carimbo { min-width: 0; transform: none !important; }
+      .carimbo { transform: none !important; }
       .campos-duplos { grid-template-columns: 1fr; }
-      .tabela-header,
-      .registro { grid-template-columns: 68px 1fr 80px 28px; }
-      .tabela-header span:nth-child(3),
+      .tabela-cabecalho,
+      .registro { grid-template-columns: 68px 1fr 80px 24px; }
+      .tabela-cabecalho span:nth-child(3),
       .registro__cat { display: none; }
       .folha::before { left: 44px; }
       .furos { left: 12px; }
@@ -498,8 +464,8 @@
     }
 
     @media (max-width: 360px) {
-      .capa__titulo { font-size: 1.15rem; }
-      .secao { padding-left: 2.75rem; padding-right: 1.1rem; }
+      .capa__titulo { font-size: 1.2rem; }
+      .secao { padding-left: 2.75rem; padding-right: 1rem; }
     }
   </style>
 </head>
@@ -507,25 +473,24 @@
 
 <div class="caderno">
 
-  <!-- Capa do caderno -->
+  <!-- Capa -->
   <div class="capa">
     <div>
       <div class="capa__titulo">Caderno Financeiro</div>
       <div class="capa__sub">Controle de Receitas &amp; Despesas</div>
     </div>
-    <div class="capa__espiral">
-      <div class="espiral-circulo"></div>
-      <div class="espiral-circulo"></div>
-      <div class="espiral-circulo"></div>
-      <div class="espiral-circulo"></div>
-      <div class="espiral-circulo"></div>
+    <div class="espirais" aria-hidden="true">
+      <div class="espiral"></div>
+      <div class="espiral"></div>
+      <div class="espiral"></div>
+      <div class="espiral"></div>
+      <div class="espiral"></div>
     </div>
   </div>
 
   <!-- Folha -->
   <div class="folha">
 
-    <!-- Furos de argola -->
     <div class="furos" aria-hidden="true">
       <div class="furo"></div>
       <div class="furo"></div>
@@ -538,69 +503,91 @@
 
     <!-- Seção 1: Resumo -->
     <div class="secao">
-      <div class="pagina-header">
-        <span class="pagina-titulo">Saldo Geral</span>
-        <span class="pagina-data" id="data-hoje"></span>
+      <div class="secao__cabecalho">
+        <span class="secao__titulo">Saldo Geral</span>
+        <span class="secao__subtitulo">junho de 2026</span>
       </div>
 
       <div class="resumo">
         <div class="carimbo carimbo--verde">
           <span class="carimbo__label">Entradas</span>
-          <span class="carimbo__valor" id="total-entradas">R$ 0,00</span>
+          <span class="carimbo__valor">R$ 0,00</span>
         </div>
         <div class="carimbo carimbo--vermelho">
           <span class="carimbo__label">Saídas</span>
-          <span class="carimbo__valor" id="total-saidas">R$ 0,00</span>
+          <span class="carimbo__valor">R$ 0,00</span>
         </div>
         <div class="carimbo carimbo--azul">
           <span class="carimbo__label">Saldo</span>
-          <span class="carimbo__valor" id="saldo">R$ 0,00</span>
+          <span class="carimbo__valor">R$ 0,00</span>
         </div>
       </div>
     </div>
 
     <!-- Seção 2: Formulário -->
     <div class="secao">
-      <div class="pagina-header">
-        <span class="pagina-titulo">Novo Lançamento</span>
+      <div class="secao__cabecalho">
+        <span class="secao__titulo">Novo Lançamento</span>
       </div>
 
-      <form id="form" novalidate>
+      <p class="form-nota">* campos obrigatórios</p>
+
+      <form action="#" method="post" novalidate>
 
         <!-- Tipo -->
         <div class="campo-linha" style="border-bottom: none; margin-bottom: 1rem;">
-          <label>Tipo</label>
-          <div class="tipo-grupo" role="group">
-            <input type="radio" name="tipo" id="tipo-receita" value="receita" checked />
-            <label for="tipo-receita">↑ Entrada</label>
-            <input type="radio" name="tipo" id="tipo-despesa" value="despesa" />
-            <label for="tipo-despesa">↓ Saída</label>
+          <label>Tipo *</label>
+          <div class="tipo-grupo" role="group" aria-label="Tipo de lançamento">
+            <input type="radio" name="tipo" id="tipo-entrada" value="receita" checked />
+            <label for="tipo-entrada">↑ Entrada</label>
+            <input type="radio" name="tipo" id="tipo-saida" value="despesa" />
+            <label for="tipo-saida">↓ Saída</label>
           </div>
         </div>
 
         <!-- Descrição -->
         <div class="campo-linha">
-          <label for="descricao">Descrição</label>
-          <input type="text" id="descricao" placeholder="Ex: salário, mercado, aluguel…" maxlength="60" required />
+          <label for="descricao">Descrição *</label>
+          <input
+            type="text"
+            id="descricao"
+            name="descricao"
+            placeholder="Ex: salário, mercado, aluguel…"
+            maxlength="60"
+            required
+          />
         </div>
 
         <!-- Valor + Data -->
         <div class="campos-duplos">
           <div class="campo-linha">
-            <label for="valor">Valor R$</label>
-            <input type="number" id="valor" placeholder="0,00" min="0.01" step="0.01" required />
+            <label for="valor">Valor R$ *</label>
+            <input
+              type="number"
+              id="valor"
+              name="valor"
+              placeholder="0,00"
+              min="0.01"
+              step="0.01"
+              required
+            />
           </div>
           <div class="campo-linha">
-            <label for="data">Data</label>
-            <input type="date" id="data" required />
+            <label for="data">Data *</label>
+            <input
+              type="date"
+              id="data"
+              name="data"
+              required
+            />
           </div>
         </div>
 
-        <!-- Categoria + Obs -->
+        <!-- Categoria + Observação -->
         <div class="campos-duplos">
           <div class="campo-linha">
             <label for="categoria">Categoria</label>
-            <select id="categoria">
+            <select id="categoria" name="categoria">
               <option value="">—</option>
               <optgroup label="Entradas">
                 <option>Salário</option>
@@ -621,7 +608,13 @@
           </div>
           <div class="campo-linha">
             <label for="obs">Obs.</label>
-            <input type="text" id="obs" placeholder="Anotação livre…" maxlength="60" />
+            <input
+              type="text"
+              id="obs"
+              name="obs"
+              placeholder="Anotação livre…"
+              maxlength="60"
+            />
           </div>
         </div>
 
@@ -631,124 +624,49 @@
 
     <!-- Seção 3: Histórico -->
     <div class="secao">
-      <div class="pagina-header">
-        <span class="pagina-titulo">Histórico</span>
-        <span class="pagina-data" id="contagem">0 lançamentos</span>
+      <div class="secao__cabecalho">
+        <span class="secao__titulo">Histórico</span>
+        <span class="secao__subtitulo">0 lançamentos</span>
       </div>
 
-      <div class="tabela-header">
+      <div class="tabela-cabecalho">
         <span>Data</span>
         <span>Descrição</span>
-        <span style="text-align:right">Categ.</span>
+        <span style="text-align:right">Categoria</span>
         <span style="text-align:right">Valor</span>
-        <span style="text-align:center"></span>
+        <span></span>
       </div>
 
-      <div id="lista">
-        <div class="vazio" id="vazio">Nenhum lançamento ainda.</div>
+      <!-- Exemplo de linha de registro (será gerado via JS nas próximas etapas) -->
+      <div class="registro">
+        <span class="registro__data">09/06</span>
+        <span class="registro__desc">Exemplo de entrada</span>
+        <span class="registro__cat">Salário</span>
+        <span class="registro__valor registro__valor--entrada">+ R$ 1.500,00</span>
+        <button class="btn-excluir" aria-label="Excluir">✕</button>
       </div>
+      <div class="registro">
+        <span class="registro__data">08/06</span>
+        <span class="registro__desc">Exemplo de saída</span>
+        <span class="registro__cat">Alimentação</span>
+        <span class="registro__valor registro__valor--saida">− R$ 120,00</span>
+        <button class="btn-excluir" aria-label="Excluir">✕</button>
+      </div>
+
+      <p class="historico-vazio">
+        Os lançamentos aparecerão aqui após a implementação do JavaScript.
+      </p>
     </div>
 
   </div><!-- /folha -->
 
   <!-- Rodapé -->
-  <div class="rodape-folha">
-    <span class="rodape-folha__pag">pág. 01</span>
-    <span class="rodape-folha__contagem">Projeto Avaliativo — v1.0</span>
+  <div class="rodape">
+    <span>pág. 01</span>
+    <span>Projeto Avaliativo — v1.0</span>
   </div>
 
-</div><!-- /caderno -->
-
-<script>
-  const transacoes = [];
-  let id = 1;
-
-  const fmtMoeda = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const fmtData  = s => { const [y,m,d] = s.split('-'); return `${d}/${m}`; };
-
-  const elEntradas  = document.getElementById('total-entradas');
-  const elSaidas    = document.getElementById('total-saidas');
-  const elSaldo     = document.getElementById('saldo');
-  const elContagem  = document.getElementById('contagem');
-  const elLista     = document.getElementById('lista');
-  const elVazio     = document.getElementById('vazio');
-  const elDataHoje  = document.getElementById('data-hoje');
-  const dataInput   = document.getElementById('data');
-
-  const hoje = new Date();
-  dataInput.valueAsDate = hoje;
-  elDataHoje.textContent = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-
-  function atualizarTotais() {
-    const entradas = transacoes.filter(t => t.tipo === 'receita').reduce((s,t) => s + t.valor, 0);
-    const saidas   = transacoes.filter(t => t.tipo === 'despesa').reduce((s,t) => s + t.valor, 0);
-    const saldo    = entradas - saidas;
-
-    elEntradas.textContent = fmtMoeda(entradas);
-    elSaidas.textContent   = fmtMoeda(saidas);
-    elSaldo.textContent    = fmtMoeda(saldo);
-    elSaldo.style.color    = saldo < 0 ? 'var(--red-stamp)' : 'var(--blue-margin)';
-
-    const n = transacoes.length;
-    elContagem.textContent = `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`;
-  }
-
-  function renderizar() {
-    const linhas = elLista.querySelectorAll('.registro');
-    linhas.forEach(l => l.remove());
-
-    elVazio.style.display = transacoes.length === 0 ? 'block' : 'none';
-
-    const ord = [...transacoes].sort((a,b) => b.data.localeCompare(a.data));
-    ord.forEach(t => {
-      const div = document.createElement('div');
-      div.className = 'registro';
-      div.innerHTML = `
-        <span class="registro__data">${fmtData(t.data)}</span>
-        <span class="registro__desc">${esc(t.descricao)}</span>
-        <span class="registro__cat">${esc(t.categoria || '—')}</span>
-        <span class="registro__valor ${t.tipo === 'receita' ? 'valor--entrada' : 'valor--saida'}">
-          ${t.tipo === 'receita' ? '+' : '-'} ${fmtMoeda(t.valor)}
-        </span>
-        <button class="btn-excluir" onclick="excluir(${t.id})" aria-label="Excluir">✕</button>
-      `;
-      elLista.appendChild(div);
-    });
-  }
-
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  window.excluir = function(tid) {
-    const i = transacoes.findIndex(t => t.id === tid);
-    if (i !== -1) { transacoes.splice(i, 1); renderizar(); atualizarTotais(); }
-  };
-
-  document.getElementById('form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const descricao  = document.getElementById('descricao').value.trim();
-    const valor      = parseFloat(document.getElementById('valor').value);
-    const data       = document.getElementById('data').value;
-    const tipo       = document.querySelector('input[name="tipo"]:checked').value;
-    const categoria  = document.getElementById('categoria').value;
-    const obs        = document.getElementById('obs').value.trim();
-
-    if (!descricao) { alert('Informe uma descrição.'); document.getElementById('descricao').focus(); return; }
-    if (!valor || valor <= 0) { alert('Informe um valor válido.'); document.getElementById('valor').focus(); return; }
-    if (!data) { alert('Selecione uma data.'); document.getElementById('data').focus(); return; }
-
-    transacoes.push({ id: id++, descricao, valor, data, tipo, categoria, obs });
-    renderizar();
-    atualizarTotais();
-
-    document.getElementById('descricao').value = '';
-    document.getElementById('valor').value = '';
-    document.getElementById('categoria').value = '';
-    document.getElementById('obs').value = '';
-    document.getElementById('descricao').focus();
-  });
-</script>
+</div>
 
 </body>
 </html>
