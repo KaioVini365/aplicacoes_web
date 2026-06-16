@@ -511,15 +511,15 @@
       <div class="resumo">
         <div class="carimbo carimbo--verde">
           <span class="carimbo__label">Entradas</span>
-          <span class="carimbo__valor">R$ 0,00</span>
+          <span class="carimbo__valor" id="total-entradas">R$ 0,00</span>
         </div>
         <div class="carimbo carimbo--vermelho">
           <span class="carimbo__label">Saídas</span>
-          <span class="carimbo__valor">R$ 0,00</span>
+          <span class="carimbo__valor" id="total-saidas">R$ 0,00</span>
         </div>
         <div class="carimbo carimbo--azul">
           <span class="carimbo__label">Saldo</span>
-          <span class="carimbo__valor">R$ 0,00</span>
+          <span class="carimbo__valor" id="saldo">R$ 0,00</span>
         </div>
       </div>
     </div>
@@ -532,7 +532,7 @@
 
       <p class="form-nota">* campos obrigatórios</p>
 
-      <form action="#" method="post" novalidate>
+      <form id="form" action="#" method="post" novalidate>
 
         <!-- Tipo -->
         <div class="campo-linha" style="border-bottom: none; margin-bottom: 1rem;">
@@ -614,7 +614,7 @@
     <div class="secao">
       <div class="secao__cabecalho">
         <span class="secao__titulo">Histórico</span>
-        <span class="secao__subtitulo">0 lançamentos</span>
+        <span class="secao__subtitulo" id="contagem">0 lançamentos</span>
       </div>
 
       <div class="tabela-cabecalho">
@@ -625,25 +625,10 @@
         <span></span>
       </div>
 
-      <!-- Exemplo de linha de registro (será gerado via JS nas próximas etapas) -->
-      <div class="registro">
-        <span class="registro__data">09/06</span>
-        <span class="registro__desc">Exemplo de entrada</span>
-        <span class="registro__cat">Salário</span>
-        <span class="registro__valor registro__valor--entrada">+ R$ 1.500,00</span>
-        <button class="btn-excluir" aria-label="Excluir">✕</button>
+      <!-- Registros gerados dinamicamente pelo JavaScript -->
+      <div id="lista-lancamentos">
+        <p class="historico-vazio" id="msg-vazio">Nenhum lançamento registrado ainda.</p>
       </div>
-      <div class="registro">
-        <span class="registro__data">08/06</span>
-        <span class="registro__desc">Exemplo de saída</span>
-        <span class="registro__cat">Alimentação</span>
-        <span class="registro__valor registro__valor--saida">− R$ 120,00</span>
-        <button class="btn-excluir" aria-label="Excluir">✕</button>
-      </div>
-
-      <p class="historico-vazio">
-        Os lançamentos aparecerão aqui após a implementação do JavaScript.
-      </p>
     </div>
 
   </div><!-- /folha -->
@@ -655,6 +640,193 @@
   </div>
 
 </div>
+
+<script>
+  // ============================================================
+  // VARIÁVEIS GLOBAIS
+  // Array que armazena todos os lançamentos cadastrados
+  // e contador de ID único para cada lançamento
+  // ============================================================
+  let lancamentos = [];
+  let proximoId = 1;
+
+  // ============================================================
+  // FUNÇÃO: formatar valor em moeda brasileira
+  // Recebe um número e retorna uma string no formato R$ 0,00
+  // ============================================================
+  function formatarMoeda(valor) {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  // ============================================================
+  // FUNÇÃO: formatar data de yyyy-mm-dd para dd/mm
+  // ============================================================
+  function formatarData(dataStr) {
+    const partes = dataStr.split('-');
+    return partes[2] + '/' + partes[1];
+  }
+
+  // ============================================================
+  // FUNÇÃO: atualizar os carimbos de resumo (entradas, saídas, saldo)
+  // Percorre o array de lançamentos e soma os valores por tipo
+  // ============================================================
+  function atualizarResumo() {
+    let totalEntradas = 0;
+    let totalSaidas   = 0;
+
+    // Percorre cada lançamento e soma conforme o tipo
+    for (let i = 0; i < lancamentos.length; i++) {
+      if (lancamentos[i].tipo === 'receita') {
+        totalEntradas = totalEntradas + lancamentos[i].valor;
+      } else {
+        totalSaidas = totalSaidas + lancamentos[i].valor;
+      }
+    }
+
+    const saldo = totalEntradas - totalSaidas;
+
+    // Atualiza os valores nos carimbos via innerHTML
+    document.getElementById('total-entradas').innerHTML = formatarMoeda(totalEntradas);
+    document.getElementById('total-saidas').innerHTML   = formatarMoeda(totalSaidas);
+    document.getElementById('saldo').innerHTML          = formatarMoeda(saldo);
+
+    // Muda a cor do saldo conforme positivo ou negativo
+    if (saldo < 0) {
+      document.getElementById('saldo').style.color = 'var(--vermelho)';
+    } else {
+      document.getElementById('saldo').style.color = 'var(--azul-margem)';
+    }
+
+    // Atualiza o contador de lançamentos
+    const total = lancamentos.length;
+    if (total === 1) {
+      document.getElementById('contagem').innerHTML = '1 lançamento';
+    } else {
+      document.getElementById('contagem').innerHTML = total + ' lançamentos';
+    }
+  }
+
+  // ============================================================
+  // FUNÇÃO: renderizar a lista de lançamentos na tabela
+  // Limpa o conteúdo atual e redesenha todos os itens do array
+  // ============================================================
+  function renderizarLista() {
+    const lista = document.getElementById('lista-lancamentos');
+
+    // Se não há lançamentos, exibe mensagem de vazio
+    if (lancamentos.length === 0) {
+      lista.innerHTML = '<p class="historico-vazio" id="msg-vazio">Nenhum lançamento registrado ainda.</p>';
+      return;
+    }
+
+    // Monta o HTML de cada lançamento e insere na lista
+    let html = '';
+    for (let i = 0; i < lancamentos.length; i++) {
+      const item      = lancamentos[i];
+      const classeVal = item.tipo === 'receita' ? 'registro__valor--entrada' : 'registro__valor--saida';
+      const sinal     = item.tipo === 'receita' ? '+' : '−';
+      const cat       = item.categoria !== '' ? item.categoria : '—';
+
+      html += '<div class="registro" id="registro-' + item.id + '">';
+      html += '  <span class="registro__data">'  + formatarData(item.data)   + '</span>';
+      html += '  <span class="registro__desc">'  + item.descricao            + '</span>';
+      html += '  <span class="registro__cat">'   + cat                       + '</span>';
+      html += '  <span class="registro__valor '  + classeVal + '">' + sinal + ' ' + formatarMoeda(item.valor) + '</span>';
+      html += '  <button class="btn-excluir" onclick="excluirLancamento(' + item.id + ')" aria-label="Excluir">✕</button>';
+      html += '</div>';
+    }
+
+    lista.innerHTML = html;
+  }
+
+  // ============================================================
+  // FUNÇÃO: excluir um lançamento pelo seu ID
+  // Filtra o array removendo o item com o ID correspondente
+  // ============================================================
+  function excluirLancamento(id) {
+    // Percorre o array e remove o item com o id informado
+    let novaLista = [];
+    for (let i = 0; i < lancamentos.length; i++) {
+      if (lancamentos[i].id !== id) {
+        novaLista.push(lancamentos[i]);
+      }
+    }
+
+    lancamentos = novaLista;
+
+    // Atualiza a tela após a exclusão
+    renderizarLista();
+    atualizarResumo();
+  }
+
+  // ============================================================
+  // EVENTO: captura o envio do formulário
+  // Valida os campos e, se tudo estiver certo, registra o lançamento
+  // ============================================================
+  document.getElementById('form').addEventListener('submit', function(evento) {
+    // Impede o comportamento padrão de recarregar a página
+    evento.preventDefault();
+
+    // Captura os valores dos campos do formulário
+    const descricao = document.getElementById('descricao').value;
+    const valor     = document.getElementById('valor').value;
+    const data      = document.getElementById('data').value;
+    const tipo      = document.querySelector('input[name="tipo"]:checked').value;
+    const categoria = document.getElementById('categoria').value;
+
+    // ── Validação dos campos obrigatórios ──
+    if (descricao.trim() === '') {
+      alert('Por favor, informe uma descrição para o lançamento.');
+      document.getElementById('descricao').focus();
+      return;
+    }
+
+    if (valor === '' || Number(valor) <= 0) {
+      alert('Por favor, informe um valor válido maior que zero.');
+      document.getElementById('valor').focus();
+      return;
+    }
+
+    if (data === '') {
+      alert('Por favor, selecione uma data.');
+      document.getElementById('data').focus();
+      return;
+    }
+
+    // ── Cria o objeto do novo lançamento ──
+    const novoLancamento = {
+      id:        proximoId,
+      descricao: descricao.trim(),
+      valor:     Number(valor),
+      data:      data,
+      tipo:      tipo,
+      categoria: categoria
+    };
+
+    // Adiciona ao array e incrementa o ID
+    lancamentos.push(novoLancamento);
+    proximoId = proximoId + 1;
+
+    // Atualiza a tela
+    renderizarLista();
+    atualizarResumo();
+
+    // Limpa os campos do formulário após o registro
+    document.getElementById('descricao').value = '';
+    document.getElementById('valor').value     = '';
+    document.getElementById('categoria').value = '';
+    document.getElementById('descricao').focus();
+  });
+
+  // ============================================================
+  // INICIALIZAÇÃO: define a data de hoje no campo de data
+  // ============================================================
+  const hoje = new Date();
+  const ano  = hoje.getFullYear();
+  const mes  = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia  = String(hoje.getDate()).padStart(2, '0');
+  document.getElementById('data').value = ano + '-' + mes + '-' + dia;
+</script>
 
 </body>
 </html>
